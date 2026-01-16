@@ -1,6 +1,32 @@
+# IDE 和编辑器
+.vscode/
+.idea/
+.zed/
+*.swp
+*~
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 依赖和库文件
+deps/
+libs/
+*.lib
+*.a
+*.la
+*.lo
+*.dll
+*.so
+*.so.*
+*.dylib
+*.lai
+
 # 构建目录
 build/
 cmake-build-*/
+out/
+bin/
 
 # CMake 生成的文件
 CMakeCache.txt
@@ -10,6 +36,14 @@ CTestTestfile.cmake
 Makefile
 compile_commands.json
 Testing/
+
+# 调试和临时文件
+*.dSYM/
+*.su
+*.idb
+*.pdb
+*.ilk
+*.pch
 
 # 编译输出
 *.o
@@ -21,33 +55,6 @@ Testing/
 *.s
 *.ko
 *.elf
-
-# 库文件
-*.lib
-*.a
-*.la
-*.lo
-*.dll
-*.so
-*.so.*
-*.dylib
-*.lai
-
-# 调试和临时文件
-*.dSYM/
-*.su
-*.idb
-*.pdb
-*.ilk
-*.pch
-
-# IDE 和编辑器
-.vscode/
-.idea/
-*.swp
-*~
-.DS_Store
-Thumbs.db
 
 # 包管理
 conan.lock
