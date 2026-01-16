@@ -32,9 +32,12 @@ jobs:
             mingw-w64-ucrt-x86_64-cmake
             mingw-w64-ucrt-x86_64-SDL2
             mingw-w64-ucrt-x86_64-SDL2_ttf
+          msystem: UCRT64  # 明确指定使用UCRT64环境
+          release: false
 
       # 步骤 3：配置和构建项目
       - name: 2. Configure and Build
+        shell: msys2 {0}  # 强制使用MSYS2 shell
         run: |
           mkdir build && cd build     # 创建构建目录
 
