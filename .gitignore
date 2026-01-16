@@ -1,0 +1,60 @@
+# 构建目录
+build/
+cmake-build-*/
+
+# CMake 生成的文件
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+Makefile
+compile_commands.json
+Testing/
+
+# 编译输出
+*.o
+*.obj
+*.exe
+*.out
+*.app
+*.i
+*.s
+*.ko
+*.elf
+
+# 库文件
+*.lib
+*.a
+*.la
+*.lo
+*.dll
+*.so
+*.so.*
+*.dylib
+*.lai
+
+# 调试和临时文件
+*.dSYM/
+*.su
+*.idb
+*.pdb
+*.ilk
+*.pch
+
+# IDE 和编辑器
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# 包管理
+conan.lock
+conanbuildinfo.*
+conaninfo.txt
+graph_info.json
+
+# 其他
+*.log
+*.tlog
