@@ -28,10 +28,10 @@ jobs:
           update: true # 自动更新MSYS2包管理器
           # 安装必要的编译工具和依赖库（GCC编译器(ucrt64版本)/CMake构建工具/SDL2图形库/SDL2字体库(如果使用字体)）
           install: >
-            mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-cmake
-            mingw-w64-x86_64-SDL2
-            mingw-w64-x86_64-SDL2_ttf
+            mingw-w64-ucrt-x86_64-toolchain
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-SDL2
+            mingw-w64-ucrt-x86_64-SDL2_ttf
 
       # 步骤 3：配置和构建项目
       - name: 2. Configure and Build
