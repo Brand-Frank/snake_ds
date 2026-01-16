@@ -26,7 +26,8 @@
 pacman -Syu
 
 # 安装编译工具
-pacman -S --needed base-devel mingw-w64-ucrt-x86_64-toolchain
+# pacman -S --needed base-devel mingw-w64-ucrt-x86_64-toolchain
+pacman -S --needed base-devel mingw-w64-ucrt-x86_64-gcc
 
 # 安装SDL2和相关库
 pacman -S mingw-w64-ucrt-x86_64-SDL2 mingw-w64-ucrt-x86_64-SDL2_ttf
