@@ -2,8 +2,13 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <time.h>
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_ttf.h>
+#ifdef __MINGW32__
+    #include <SDL2/SDL.h>
+    #include <SDL2/SDL_ttf.h>
+#else
+    #include <SDL.h>
+    #include <SDL_ttf.h>
+#endif
 
 // ===================== 常量定义 =====================
 #define WINDOW_WIDTH 800
