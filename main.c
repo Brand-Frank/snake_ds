@@ -177,18 +177,6 @@ bool init_graphics(Game* game) {
         return false;
     }
 
-    // 加载字体
-    // game->font = TTF_OpenFont("/mingw64/share/fonts/TTF/arial.ttf", 24);
-    // if (!game->font) {
-    //     // 尝试备用字体路径
-    //     game->font = TTF_OpenFont("C:/Windows/Fonts/arial.ttf", 24);
-    //     if (!game->font) {
-    //         printf("字体加载失败: %s\n", TTF_GetError());
-    //         printf("请确保系统中有可用的字体文件\n");
-    //         return false;
-    //     }
-    // }
-
     // 加载字体 - 使用支持中文的字体
     game->font = TTF_OpenFont("/mingw64/share/fonts/wqy-microhei/wqy-microhei.ttc", 24);
 
@@ -201,7 +189,7 @@ bool init_graphics(Game* game) {
                 game->font = TTF_OpenFont("C:/Windows/Fonts/simhei.ttf", 24);  // 黑体
                 if (!game->font) {
                     printf("中文字体加载失败，使用英文字体: %s\n", TTF_GetError());
-                    game->font = TTF_OpenFont("/mingw64/share/fonts/TTF/arial.ttf", 24);
+                    game->font = TTF_OpenFont("/mingw64/share/fonts/TTF/arial.ttf", 24);    // Arial字体
                     if (!game->font) {
                         printf("字体加载失败: %s\n", TTF_GetError());
                         printf("将使用纯图形模式\n");
@@ -401,8 +389,8 @@ void move_snake(Game* game) {
     }
 
     // 处理边界穿越（可选：如果想实现穿墙，可以启用下面的代码）
-    // new_head->x = (new_head->x + GRID_WIDTH) % GRID_WIDTH;
-    // new_head->y = (new_head->y + GRID_HEIGHT) % GRID_HEIGHT;
+    new_head->x = (new_head->x + GRID_WIDTH) % GRID_WIDTH;
+    new_head->y = (new_head->y + GRID_HEIGHT) % GRID_HEIGHT;
 
     // 将新头部插入
     new_head->next = game->snake.head;
@@ -604,14 +592,14 @@ void render_ui(Game* game) {
     render_text(game, score_text, WINDOW_WIDTH - 200, WINDOW_HEIGHT - 80, text_color);
 
     // 绘制操作提示
-    snprintf(score_text, sizeof(score_text), "控制: 方向键/WASD 移动 | 空格 暂停 | R 重新开始 | ESC 退出");
+    snprintf(score_text, sizeof(score_text), "Tips: 方向键移动 | SPACE 暂停 | R 重新开始 | ESC 退出");
     render_text(game, score_text, WINDOW_WIDTH/2 - 250, WINDOW_HEIGHT - 30, text_color);
 
     // 根据游戏状态显示不同信息
     switch (game->state) {
         case GAME_START:
             render_text(game, "贪吃蛇游戏", WINDOW_WIDTH/2 - 100, 100, text_color);
-            render_text(game, "按 SPACE 或 ENTER 开始游戏", WINDOW_WIDTH/2 - 150, 150, text_color);
+            render_text(game, "按 SPACE 或 Enter 开始游戏", WINDOW_WIDTH/2 - 150, 150, text_color);
             break;
 
         case GAME_PAUSED:
@@ -638,7 +626,7 @@ void render_ui(Game* game) {
             snprintf(score_text, sizeof(score_text), "最终分数: %d", game->score);
             render_text(game, score_text, WINDOW_WIDTH/2 - 100, WINDOW_HEIGHT/2 - 50, text_color);
 
-            render_text(game, "按 R 或 ENTER 重新开始", WINDOW_WIDTH/2 - 150, WINDOW_HEIGHT/2, text_color);
+            render_text(game, "按 R 或 Enter 重新开始", WINDOW_WIDTH/2 - 150, WINDOW_HEIGHT/2, text_color);
             render_text(game, "按 ESC 退出游戏", WINDOW_WIDTH/2 - 120, WINDOW_HEIGHT/2 + 40, text_color);
             break;
 
@@ -649,22 +637,6 @@ void render_ui(Game* game) {
 }
 
 // 渲染文本
-// void render_text(Game* game, const char* text, int x, int y, SDL_Color color) {
-//     SDL_Surface* surface = TTF_RenderText_Solid(game->font, text, color);
-//     if (!surface) return;
-
-//     SDL_Texture* texture = SDL_CreateTextureFromSurface(game->renderer, surface);
-//     if (!texture) {
-//         SDL_FreeSurface(surface);
-//         return;
-//     }
-
-//     SDL_Rect rect = {x, y, surface->w, surface->h};
-//     SDL_RenderCopy(game->renderer, texture, NULL, &rect);
-
-//     SDL_DestroyTexture(texture);
-//     SDL_FreeSurface(surface);
-// }
 void render_text(Game* game, const char* text, int x, int y, SDL_Color color) {
     if (!game->font) {
         // 如果没有字体，绘制一个简单的矩形作为占位符
@@ -674,7 +646,11 @@ void render_text(Game* game, const char* text, int x, int y, SDL_Color color) {
         return;
     }
 
-    // 使用UTF-8编码渲染文本
+    // !Error: 原来失败的方案，没有使用 utf-8 编码，所以字体乱码！
+    // SDL_Surface* surface = TTF_RenderText_Solid(game->font, text, color);
+    // if (!surface) return;
+
+    // 使用 UTF-8 编码渲染文本
     SDL_Surface* surface = TTF_RenderUTF8_Solid(game->font, text, color);
     if (!surface) {
         // 如果UTF-8失败，尝试使用默认编码
@@ -743,8 +719,8 @@ int main(int argc, char* argv[]) {
 
     printf("游戏初始化成功！\n");
     printf("游戏控制说明：\n");
-    printf("  方向键/WASD - 控制蛇移动\n");
-    printf("  空格键 - 暂停/继续\n");
+    printf("  方向键 - 控制蛇移动\n");
+    printf("  SPACE - 暂停/继续\n");
     printf("  R键 - 重新开始（游戏结束后）\n");
     printf("  ESC键 - 退出游戏\n");
 
