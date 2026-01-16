@@ -32,13 +32,22 @@ jobs:
             mingw-w64-ucrt-x86_64-cmake
             mingw-w64-ucrt-x86_64-SDL2
             mingw-w64-ucrt-x86_64-SDL2_ttf
-          msystem: UCRT64  # 明确指定使用UCRT64环境
+          msystem: UCRT64 # 明确指定使用UCRT64环境
           release: false
+
+      # - name: Add MSYS2 to PATH
+      #   run: |
+      #     echo "C:\msys64\ucrt64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      #     echo "C:\msys64\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       # 步骤 3：配置和构建项目
       - name: 2. Configure and Build
-        shell: msys2 {0}  # 强制使用MSYS2 shell
+        shell: msys2 {0} # 强制使用MSYS2 shell
         run: |
+          # # 明确使用ucrt64环境
+          # $env:CHERE_INVOKING = '1'
+          # $env:MSYSTEM = 'UCRT64'
+
           mkdir build && cd build     # 创建构建目录
 
           # CMake配置阶段：
@@ -49,6 +58,10 @@ jobs:
           # 构建项目
           cmake --build . --config Release
 
+          # # 使用绝对路径确保找到正确的cmake
+          # /c/msys64/usr/bin/cmake.exe -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release ..
+          # /c/msys64/usr/bin/cmake.exe --build . --config Release
+
       # 步骤 4：上传构建产物到GitHub Release
       - name: 3. Upload Release Artifacts
         # 使用第三方action处理Release上传
@@ -56,12 +69,7 @@ jobs:
         with:
           # 指定要上传的文件，支持通配符
           files: |
-            build/snake.exe     # 主可执行文件
-            README.md           # 项目说明文档
-
-            # 可以添加更多文件，如：
-            # assets/**       # 资源文件（如果有）
-            # CHANGELOG.md    # 更新日志
+            build/snake_game.exe
 
         # 环境变量：GitHub自动提供的访问令牌
         env:
