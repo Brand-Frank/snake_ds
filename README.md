@@ -49,3 +49,14 @@ cmake --build .
 # 运行游戏
 ./snake_game
 ```
+
+## 提交代码
+```bash
+git add .
+git commit -m "feat: initial commit"
+
+git tag -a v0.0.6 -m "Repair bug of workflow"
+
+git push
+git push origin --tags
+```
