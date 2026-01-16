@@ -1,0 +1,76 @@
+# .github/workflows/release.yml
+
+# 工作流的名称，显示在GitHub Actions页面
+name: Release Build
+
+# 触发条件：当推送以'v'开头的tag时触发（如 v1.0.0, v2.1.0-beta等）
+on:
+  push:
+    tags:
+      - "v*" # 使用通配符匹配所有以v开头的tag
+
+# 定义工作流中的任务
+jobs:
+  # 第一个任务：构建Windows版本
+  build-windows:
+    runs-on:
+      windows-latest # 指定运行环境：GitHub提供的Windows最新版虚拟机
+
+
+      # 任务执行步骤
+    steps:
+      # 步骤 1：检出代码到工作区
+      - uses: actions/checkout@v3 # @v3 表示使用该action的第三个主要版本
+
+      #步骤 2：设置 MSYS2 环境（ucrt64）
+      # 与你的本地开发环境保持一致
+      - name: 1. Setup MSYS2
+        uses: msys2/setup-msys2@v2 # 使用MSYS2的GitHub Action
+        with:
+          update: true # 自动更新MSYS2包管理器
+          # 安装必要的编译工具和依赖库
+          install: >
+            mingw-w64-x86_64-gcc      # GCC编译器（ucrt64版本）
+            mingw-w64-x86_64-cmake    # CMake构建工具
+            mingw-w64-x86_64-SDL2     # SDL2图形库
+            mingw-w64-x86_64-SDL2_ttf # SDL2字体库（如果使用字体）
+
+      # 步骤 3：配置和构建项目
+      - name: 2. Configure and Build
+        run: |
+          mkdir build && cd build     # 创建构建目录
+
+          # CMake配置阶段：
+          # -G "MinGW Makefiles" 指定生成器为MinGW Makefiles
+          # -DCMAKE_BUILD_TYPE=Release 设置构建类型为Release
+          cmake -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release ..
+
+          # 构建项目
+          cmake --build . --config Release
+
+      # 步骤 4：上传构建产物到GitHub Release
+      - name: 3. Upload Release Artifacts
+        # 使用第三方action处理Release上传
+        uses: softprops/action-gh-release@v1
+        with:
+          # 指定要上传的文件，支持通配符
+          files: |
+            build/snake.exe     # 主可执行文件
+            README.md           # 项目说明文档
+
+            # 可以添加更多文件，如：
+            # assets/**       # 资源文件（如果有）
+            # CHANGELOG.md    # 更新日志
+
+        # 环境变量：GitHub自动提供的访问令牌
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # 可以继续添加其他平台的构建任务，例如：
+  # build-linux:
+  #   runs-on: ubuntu-latest
+  #   steps: [...]
+
+  # build-macos:
+  #   runs-on: macos-latest
+  #   steps: [...]
