@@ -22,11 +22,13 @@ jobs:
     # 任务执行步骤
     steps:
       # 步骤 1：检出代码到工作区
-      - uses: actions/checkout@v3 # @v3 表示使用该action的第三个主要版本
+      - uses: actions/checkout@v4 # @v3 表示使用该action的第三个主要版本
+        with:
+          fetch-depth: 0 # 获取完整历史，用于tag信息
 
       #步骤 2：设置 MSYS2 环境（ucrt64）
       # 与你的本地开发环境保持一致
-      - name: 1. Setup MSYS2
+      - name: Setup MSYS2
         uses: msys2/setup-msys2@v2 # 使用MSYS2的GitHub Action
         with:
           update: true # 自动更新MSYS2包管理器
@@ -39,24 +41,23 @@ jobs:
           msystem: UCRT64 # 明确指定使用UCRT64环境
           # release: false
 
-      # - name: Add MSYS2 to PATH
-      #   run: |
-      #     echo "C:\msys64\ucrt64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-      #     echo "C:\msys64\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Add MSYS2 to PATH
+        run: |
+          echo "C:\msys64\ucrt64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          echo "C:\msys64\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       # 步骤 3：配置和构建项目
-      - name: 2. Configure and Build
-        # shell: msys2 {0} # 强制使用MSYS2 shell
+      - name: Configure and Build
+        shell: msys2 {0} # 强制使用MSYS2 shell
         run: |
-          # # 明确使用ucrt64环境
-          # $env:CHERE_INVOKING = '1'
-          # $env:MSYSTEM = 'UCRT64'
-
           mkdir build && cd build     # 创建构建目录
 
+          # 明确使用ucrt64环境
+          $env:CHERE_INVOKING = '1'
+          $env:MSYSTEM = 'UCRT64'
           # CMake配置阶段：
-          # -G "MinGW Makefiles" 指定生成器为MinGW Makefiles
-          # -DCMAKE_BUILD_TYPE=Release 设置构建类型为Release
+          # # -G "MinGW Makefiles" 指定生成器为MinGW Makefiles
+          # # -DCMAKE_BUILD_TYPE=Release 设置构建类型为Release
           cmake -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release ..
 
           # 构建项目
@@ -66,18 +67,199 @@ jobs:
           # /c/msys64/usr/bin/cmake.exe -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release ..
           # /c/msys64/usr/bin/cmake.exe --build . --config Release
 
-      # 步骤 4：上传构建产物到GitHub Release
-      - name: 3. Upload Release Artifacts
+      # 检查构建产物
+      - name: Verify Build
+        run: |
+          echo "构建产物检查:"
+          ls -la build/
+          if (Test-Path "build/snake_game.exe") {
+            echo "✓ snake_game.exe 构建成功"
+          } else {
+            echo "✗ snake_game.exe 未找到"
+            exit 1
+          }
+        shell: pwsh
+
+      # 步骤 4：准备发布日志
+      - name: Prepare Release Notes
+        id: prepare_notes
+        run: |
+          # 获取tag信息
+          # TAG_MESSAGE=$(git tag -l --format='%(contents)' ${{ github.ref_name }})
+          TAG_NAME="${{ github.ref_name }}"
+
+          # 获取tag的完整信息
+          TAG_INFO=$(git show-ref --tags | grep "refs/tags/$TAG_NAME$")
+          TAG_HASH=${TAG_INFO%% *}
+
+          # 获取tag的提交信息
+          if [ -n "$TAG_HASH" ]; then
+            TAG_MESSAGE=$(git tag -l --format='%(contents)' "$TAG_NAME" 2>/dev/null || echo "No description provided")
+          else
+            TAG_MESSAGE="No description provided"
+          fi
+
+          # 如果没有描述，使用默认
+          if [ -z "$TAG_MESSAGE" ] || [ "$TAG_MESSAGE" = "" ]; then
+            TAG_MESSAGE="修复了一些问题，提升稳定性"
+          fi
+
+          # 生成release notes
+          cat << EOF > release-notes.md
+          # # 贪吃蛇游戏 ${{ github.ref_name }}
+          # 贪吃蛇游戏 $TAG_NAME
+
+          ## 更新内容
+          $TAG_MESSAGE
+
+          ## 下载
+          下载下方的 `snake_game.exe` 文件即可运行
+
+          ### 系统要求
+          - Windows 10 或更高版本
+          - 可能需要安装 [Visual C++ Redistributable](https://aka.ms/vs/17/release/vc_redist.x64.exe)
+
+          ## 构建信息
+          - 版本: ${{ github.ref_name }}
+          - 构建时间: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          - 提交哈希: ${{ github.sha }}
+
+          ---
+          *自动构建发布*
+          EOF
+
+          # 替换变量
+          (Get-Content release-notes.md) -replace '\$TAG_NAME', $TAG_NAME -replace '\$TAG_MESSAGE', $TAG_MESSAGE | Set-Content release-notes.md
+
+          echo "生成的Release Notes:"
+          cat release-notes.md
+          # 输出tag信息供后续步骤使用
+          echo "tag_name=$TAG_NAME" >> $env:GITHUB_OUTPUT
+          echo "tag_message<<EOF" >> $env:GITHUB_OUTPUT
+          echo "$TAG_MESSAGE" >> $env:GITHUB_OUTPUT
+          echo "EOF" >> $env:GITHUB_OUTPUT
+        shell: bash
+
+      # 优化版本检查逻辑
+      - name: Check Release Type
+        id: check_version
+        run: |
+          TAG_NAME="${{ github.ref_name }}"
+          echo "检查版本: $TAG_NAME"
+
+          # 使用更灵活的版本检查
+          if [[ "$TAG_NAME" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)(-[a-zA-Z0-9\.]+)?$ ]]; then
+            MAJOR=${BASH_REMATCH[1]}
+            MINOR=${BASH_REMATCH[2]}
+            PATCH=${BASH_REMATCH[3]}
+            SUFFIX=${BASH_REMATCH[4]:-}
+
+            echo "解析版本: MAJOR=$MAJOR, MINOR=$MINOR, PATCH=$PATCH, SUFFIX=$SUFFIX"
+
+            # 发布规则：
+            # 1. 主版本发布（v1.0.0, v2.0.0等）
+            # 2. 次版本发布（v1.1.0, v1.2.0等）
+            # 3. 初始开发版本（v0.1.0, v0.2.0等）也发布
+            # 4. 预发布版本（-beta, -rc等）作为预发布
+            # 5. 补丁版本（v1.0.1, v1.1.1等）不发布或作为预发布
+
+            if [[ -n "$SUFFIX" ]]; then
+              # 有后缀的版本（如v1.0.0-beta.1）
+              echo "release_type=prerelease" >> $GITHUB_OUTPUT
+              echo "is_critical=false" >> $GITHUB_OUTPUT
+              echo "这是预发布版本: $TAG_NAME"
+            elif [[ $PATCH -eq 0 ]] || [[ $MAJOR -eq 0 ]]; then
+              # 主版本、次版本或0.x.x版本都发布
+              echo "release_type=release" >> $GITHUB_OUTPUT
+              echo "is_critical=true" >> $GITHUB_OUTPUT
+              echo "这是关键版本: $TAG_NAME"
+            else
+              # 补丁版本不发布
+              echo "release_type=skip" >> $GITHUB_OUTPUT
+              echo "is_critical=false" >> $GITHUB_OUTPUT
+              echo "这是补丁版本，不发布到Release: $TAG_NAME"
+            fi
+          else
+            # 非标准版本格式
+            echo "release_type=prerelease" >> $GITHUB_OUTPUT
+            echo "is_critical=false" >> $GITHUB_OUTPUT
+            echo "非标准版本格式，作为预发布: $TAG_NAME"
+          fi
+        shell: bash
+
+      # 步骤 5：检查是否为关键版本
+      # - name: Check if Critical Release
+      #   id: check_release
+      #   run: |
+      #     # 获取tag名称
+      #     TAG_NAME="${{ github.ref_name }}"
+
+      #     # 判断是否关键版本（v1.0.0, v2.0.0等）
+      #     if [[ "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+      #       # 检查是否是主版本或次版本
+      #       IFS='.' read -ra VERSION_PARTS <<< "${TAG_NAME#v}"
+      #       MAJOR=${VERSION_PARTS[0]}
+      #       MINOR=${VERSION_PARTS[1]}
+      #       PATCH=${VERSION_PARTS[2]}
+
+      #       # 规则：主版本或次版本为0的补丁版本都发布
+      #       # 或者：只有PATCH为0时发布（v1.0.0, v1.1.0等）
+      #       if [[ $PATCH -eq 0 ]]; then
+      #         echo "is_critical=true" >> $GITHUB_OUTPUT
+      #         echo "版本 $TAG_NAME 是关键版本，将发布到Release"
+      #       else
+      #         echo "is_critical=false" >> $GITHUB_OUTPUT
+      #         echo "版本 $TAG_NAME 是非关键版本，只创建tag"
+      #       fi
+      #     else
+      #       echo "is_critical=false" >> $GITHUB_OUTPUT
+      #       echo "版本 $TAG_NAME 是非关键版本，只创建tag"
+      #     fi
+      #   shell: bash
+
+      # 步骤 6：关键版本上传构建产物到GitHub Release
+      - name: Publish Release (Critical Versions)
+        if: steps.check_release.outputs.is_critical == 'true'
         # 使用第三方action处理Release上传
         uses: softprops/action-gh-release@v1
         with:
           # 指定要上传的文件，支持通配符
           files: |
             build/snake_game.exe
+          tag_name: ${{ github.ref_name }}
+          name: "贪吃蛇游戏 v${{ github.ref_name }}" # 自定义Release标题
+          body_path: release-notes.md # 从文件读取描述
+          draft: false
+          prerelease: false
+          # env:
+          #   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # 环境变量：GitHub自动提供的访问令牌
 
-        # 环境变量：GitHub自动提供的访问令牌
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # 预发布版本
+      - name: Publish Prerelease
+        if: steps.check_version.outputs.release_type == 'prerelease'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            build/snake_game.exe
+          tag_name: ${{ github.ref_name }}
+          name: "贪吃蛇游戏 v${{ github.ref_name }} (预览版)"
+          body_path: release-notes.md
+          draft: false
+          prerelease: true # 标记为预发布
+
+      # 非关键版本只构建到 Tag，不发布 Release
+      - name: Skip Release (Patch Versions)
+        if: steps.check_release.outputs.is_type == 'skip'
+        run: |
+          echo "========================================"
+          echo "版本 ${{ github.ref_name }} 是补丁版本"
+          echo "已成功构建，但未发布到GitHub Release"
+          echo ""
+          echo "如果需要发布此版本到Release，请使用:"
+          echo "1. vX.Y.0 格式（如 v1.1.0）"
+          echo "2. 或添加后缀作为预发布（如 v1.0.1-beta.1）"
+          echo "========================================"
+        shell: bash
 
   # 可以继续添加其他平台的构建任务，例如：
   # build-linux:

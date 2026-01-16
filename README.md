@@ -1,5 +1,7 @@
 # 贪吃蛇游戏 (Snake Game)
 
+![Release Build](https://github.com/Brand-Frank/snake_ds/actions/workflows/release.yml/badge.svg)
+
 一个使用C语言和SDL2开发的经典贪吃蛇游戏，支持Windows平台。
 
 ## 功能特点
